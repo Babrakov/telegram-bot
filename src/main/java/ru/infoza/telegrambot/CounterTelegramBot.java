@@ -1,6 +1,7 @@
 package ru.infoza.telegrambot;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
@@ -10,12 +11,18 @@ import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScope
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import ru.infoza.telegrambot.components.BotCommands;
 import ru.infoza.telegrambot.config.BotConfig;
+import ru.infoza.telegrambot.database.User;
+import ru.infoza.telegrambot.database.UserRepository;
 
 import javax.validation.constraints.NotNull;
 
 @Slf4j
 @Component
 public class CounterTelegramBot extends TelegramLongPollingBot implements BotCommands {
+
+    @Autowired
+    private UserRepository userRepository;
+
     final BotConfig config;
 
     public CounterTelegramBot(BotConfig config) {
@@ -40,11 +47,10 @@ public class CounterTelegramBot extends TelegramLongPollingBot implements BotCom
     @Override
     public void onUpdateReceived(@NotNull Update update) {
         long chatId = 0;
-        long userId = 0; //это нам понадобится позже
+        long userId = 0;
         String userName = null;
         String receivedMessage;
 
-        //если получено сообщение текстом
         if(update.hasMessage()) {
             chatId = update.getMessage().getChatId();
             userId = update.getMessage().getFrom().getId();
@@ -54,8 +60,6 @@ public class CounterTelegramBot extends TelegramLongPollingBot implements BotCom
                 receivedMessage = update.getMessage().getText();
                 botAnswerUtils(receivedMessage, chatId, userName);
             }
-
-            //если нажата одна из кнопок бота
         } else if (update.hasCallbackQuery()) {
             chatId = update.getCallbackQuery().getMessage().getChatId();
             userId = update.getCallbackQuery().getFrom().getId();
@@ -63,6 +67,12 @@ public class CounterTelegramBot extends TelegramLongPollingBot implements BotCom
             receivedMessage = update.getCallbackQuery().getData();
 
             botAnswerUtils(receivedMessage, chatId, userName);
+        }
+
+//        log.info(String.valueOf(chatId));
+
+        if(chatId == Long.valueOf(config.getChatId())){
+            updateDB(userId, userName);
         }
     }
 
@@ -103,6 +113,22 @@ public class CounterTelegramBot extends TelegramLongPollingBot implements BotCom
             log.info("Reply sent");
         } catch (TelegramApiException e){
             log.error(e.getMessage());
+        }
+    }
+
+    private void updateDB(long userId, String userName) {
+//        log.info("updateDB");
+        if(userRepository.findById(userId).isEmpty()){
+            User user = new User();
+            user.setId(userId);
+            user.setName(userName);
+            //сразу добавляем в столбец каунтера 1 сообщение
+            user.setMsg_numb(1);
+
+            userRepository.save(user);
+            log.info("Added to DB: " + user);
+        } else {
+            userRepository.updateMsgNumberByUserId(userId);
         }
     }
 

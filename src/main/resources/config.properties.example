@@ -1,3 +1,17 @@
 bot.name = Bot Name
 bot.token = bot:token
 bot.chatId = botChatId
+
+#db related settings
+
+spring.jpa.database = PostgreSQL
+spring.jpa.show-sql = false
+# для автоматического создания/обновления таблицы в бд
+spring.jpa.hibernate.ddl-auto = update
+
+spring.datasource.driverClassName = org.postgresql.Driver
+# ниже прописываете порт и название бд
+spring.datasource.url = jdbc:postgresql://localhost:5432/tg
+# ваши кредлы для доступа к бд
+spring.datasource.username = postgres
+spring.datasource.password = password
